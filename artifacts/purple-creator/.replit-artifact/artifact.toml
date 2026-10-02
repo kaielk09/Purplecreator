@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Purple Creator"
+description = "A public Minecraft mod and plugin creator with user accounts, saved projects, a visual block editor, and Purple AI assistance."
+version = "1.0.0"
+id = "artifacts/purple-creator"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21255
+
+[services.development]
+run = "pnpm --filter @workspace/purple-creator run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/purple-creator", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/purple-creator/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21255"
+BASE_PATH = "/"

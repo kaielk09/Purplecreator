@@ -162,6 +162,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /projects/{id}/generate:
+    post:
+      operationId: generateProjectArtifact
+      tags: [projects]
+      summary: Build a downloadable Minecraft mod or plugin jar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Compiled Minecraft artifact
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/java-archive:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: The project cannot be generated with its current settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: The project source did not compile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Required Minecraft build tools or dependencies are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl

@@ -539,6 +539,80 @@ export const useDeleteProject = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getDeleteProjectMutationOptions(options));
     }
 
+export const getGenerateProjectArtifactUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}/generate`
+}
+
+/**
+ * @summary Build a downloadable Minecraft mod or plugin jar
+ */
+export const generateProjectArtifact = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGenerateProjectArtifactUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateProjectArtifactMutationKey = () => ['generateProjectArtifact'] as const;
+
+export const getGenerateProjectArtifactMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateProjectArtifact>>, TError,GenerateProjectArtifactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateProjectArtifact>>, TError,GenerateProjectArtifactMutationVariables, TContext> => {
+
+const mutationKey = getGenerateProjectArtifactMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateProjectArtifact>>, GenerateProjectArtifactMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateProjectArtifact(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateProjectArtifactMutationResult = NonNullable<Awaited<ReturnType<typeof generateProjectArtifact>>>
+
+    export type GenerateProjectArtifactMutationError = ErrorType<ErrorEnvelope>
+    export type GenerateProjectArtifactMutationVariables = {id: string}
+
+    /**
+ * @summary Build a downloadable Minecraft mod or plugin jar
+ */
+export const useGenerateProjectArtifact = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateProjectArtifact>>, TError,GenerateProjectArtifactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateProjectArtifact>>,
+        TError,
+        GenerateProjectArtifactMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateProjectArtifactMutationOptions(options));
+    }
+
 export const getRequestUploadUrlUrl = () => {
 
 

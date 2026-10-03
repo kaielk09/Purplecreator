@@ -7,6 +7,7 @@ import { plPL } from '@clerk/localizations';
 import {
   useCreateProject,
   useDeleteProject,
+  useGenerateProjectArtifact,
   useGetProject,
   useListProjects,
   useRequestUploadUrl,
@@ -92,11 +93,19 @@ const clerkAppearance = {
   },
 };
 
-const versions = ['1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16', '1.17', '1.18', '1.19', '1.20', '1.21', 'Latest'];
+const versions = ['1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16', '1.17', '1.18', '1.19', '1.20', '1.21', '26.1', '26.2', '26.3', 'Latest'];
 const iconURL = (path?: string | null) => path ? `/api/storage${path}` : '';
 const uid = () => globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const formatDate = (value?: string) => value ? new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value)) : 'Przed chwilą';
 const categoryLabel = (category: string) => category === 'mod' ? 'Mod' : 'Plugin';
+const blockKindLabel = (kind: string) => ({
+  command: 'Komenda',
+  event: 'Zdarzenie',
+  condition: 'Warunek',
+  action: 'Akcja',
+  item: 'Przedmiot',
+  world: 'Świat',
+}[kind] ?? 'Blok');
 
 function AiPlanProvider({ children }: { children: ReactNode }) {
   const [activePlan, registerPlan] = useState<ActiveAiPlan | null>(null);
@@ -434,6 +443,7 @@ function blockTone(block: ProjectBlock): string {
 function EditorPage({ id }: { id: string }) {
   const query = useGetProject(id, { query: { queryKey: getGetProjectQueryKey(id), enabled: !!id } });
   const save = useUpdateProject();
+  const generateJar = useGenerateProjectArtifact();
   const client = useQueryClient();
   const [, setLocation] = useLocation();
   const project = query.data as Project | undefined;
@@ -444,6 +454,7 @@ function EditorPage({ id }: { id: string }) {
   const [dirty, setDirty] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
   const [error, setError] = useState('');
+  const [generating, setGenerating] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState('');
   const { registerPlan } = useContext(AiPlanContext);
   useEffect(() => { if (project) { setBlocks(project.blocks ?? []); setProjectName(project.name); setDirty(false); } }, [project?.id]);
@@ -481,10 +492,50 @@ function EditorPage({ id }: { id: string }) {
     setSavedMessage('');
   };
   const removeBlock = (blockId: string) => { setBlocks(old => old.filter(b => b.id !== blockId)); if (selected === blockId) setSelected(null); setDirty(true); setSavedMessage(''); };
-  const saveNow = () => {
-    if (!project) return;
+  const saveDraft = async () => {
+    if (!project) throw new Error('Projekt nie jest dostępny.');
     const payload: ProjectUpdate = { name: projectName.trim() || project.name, category: project.category, version: project.version, iconPath: project.iconPath, blocks };
-    save.mutate({ id, data: payload }, { onSuccess: saved => { client.setQueryData(getGetProjectQueryKey(id), saved); client.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); client.invalidateQueries({ queryKey: getListProjectsQueryKey() }); setDirty(false); setSavedMessage('Zapisano przed chwilą'); setError(''); }, onError: () => setError('Nie udało się zapisać zmian. Spróbuj ponownie.') });
+    const saved = await save.mutateAsync({ id, data: payload });
+    client.setQueryData(getGetProjectQueryKey(id), saved);
+    void client.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+    void client.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    setDirty(false);
+    setSavedMessage('Zapisano przed chwilą');
+    setError('');
+  };
+  const saveNow = () => {
+    setError('');
+    void saveDraft().catch(() => setError('Nie udało się zapisać zmian. Spróbuj ponownie.'));
+  };
+  const generateArtifact = async () => {
+    if (!project || generating) return;
+    setGenerating(true);
+    setError('');
+    setSavedMessage('');
+    try {
+      if (dirty) await saveDraft();
+      const jar = await generateJar.mutateAsync({ id });
+      const objectUrl = URL.createObjectURL(jar);
+      const anchor = document.createElement('a');
+      const safeName = (projectName.trim() || project.name)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'purple-creator-project';
+      anchor.href = objectUrl;
+      anchor.download = `${safeName}.jar`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      setSavedMessage('Plik .jar został pobrany');
+    } catch (buildError) {
+      const message = buildError instanceof Error ? buildError.message : '';
+      setError(message || 'Nie udało się wygenerować pliku .jar. Spróbuj ponownie.');
+    } finally {
+      setGenerating(false);
+    }
   };
   const moveBlock = (index: number, direction: -1 | 1) => {
     const next = [...blocks]; const target = index + direction;
@@ -504,7 +555,11 @@ function EditorPage({ id }: { id: string }) {
           <div className="min-w-0"><input value={projectName} onChange={e => { setProjectName(e.target.value); setDirty(true); setSavedMessage(''); }} className="w-full max-w-[260px] truncate bg-transparent text-[14px] font-bold text-[#eee6f3] outline-none focus:border-b focus:border-[#b989da]" aria-label="Nazwa projektu" data-testid="input-editor-project-name" /><div className="mt-0.5 flex items-center gap-2 text-[9px] text-[#84788d]"><span>{categoryLabel(project.category)}</span><span>·</span><span>MC {project.version}</span></div></div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden text-[9px] text-[#8c8095] sm:block" data-testid="status-save-state">{save.isPending ? 'Zapisywanie…' : savedMessage || (dirty ? 'Niezapisane zmiany' : 'Wszystkie zmiany zapisane')}</span>
+          <span className="hidden text-[9px] text-[#8c8095] sm:block" data-testid="status-save-state">{generating ? 'Generowanie pliku .jar…' : save.isPending ? 'Zapisywanie…' : savedMessage || (dirty ? 'Niezapisane zmiany' : 'Wszystkie zmiany zapisane')}</span>
+          <button onClick={() => void generateArtifact()} disabled={generating || save.isPending} className="inline-flex items-center gap-2 rounded-xl border border-[#684b7b] bg-[#352640] px-4 py-2.5 text-[10px] font-extrabold text-[#e4c8f7] transition hover:border-[#956db0] hover:bg-[#443052] disabled:cursor-not-allowed disabled:opacity-50" data-testid="button-generate-artifact" title="Zapisz projekt i pobierz gotowy plik .jar">
+            {generating ? <LoaderCircle size={13} className="animate-spin" /> : <Rocket size={13} />}
+            {generating ? 'Generowanie…' : 'Generuj .jar'}
+          </button>
           <button onClick={saveNow} disabled={save.isPending || !dirty} className="inline-flex items-center gap-2 rounded-xl bg-[#b982eb] px-4 py-2.5 text-[10px] font-extrabold text-[#21152c] transition hover:bg-[#d0a3f3] disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-save-editor">{save.isPending ? <LoaderCircle size={13} className="animate-spin" /> : <Save size={13} />} Zapisz zmiany</button>
         </div>
       </div>
@@ -607,8 +662,8 @@ function HomeRoute() {
 }
 
 function EditorRoute() {
-  const params = useRoute<{ id: string }>('/editor/:id')[0];
-  return params?.id ? <SignedInRoute><EditorPage id={params.id} /></SignedInRoute> : <Redirect to="/projects" />;
+  const [matched, params] = useRoute<{ id: string }>('/editor/:id');
+  return matched && params?.id ? <SignedInRoute><EditorPage id={params.id} /></SignedInRoute> : <Redirect to="/projects" />;
 }
 
 function NotFoundPage() {

@@ -151,6 +151,16 @@ export const DeleteProjectResponse = zod.void()
 
 
 /**
+ * @summary Build a downloadable Minecraft mod or plugin jar
+ */
+export const GenerateProjectArtifactParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GenerateProjectArtifactResponse = zod.unknown()
+
+
+/**
  * @summary Request a signed URL for a project icon upload
  */
 

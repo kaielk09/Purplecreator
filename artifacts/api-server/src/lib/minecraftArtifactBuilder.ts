@@ -1226,31 +1226,62 @@ tasks.withType(JavaCompile).configureEach {
   }
 }
 
+async function ensureGradleWrapper(root: string): Promise<void> {
+  const wrapper = join(root, "gradlew");
+  try {
+    await access(wrapper);
+    return;
+  } catch {
+    // Create the wrapper without configuring the Minecraft project: the
+    // system Gradle can be older than the Fabric Loom version selected for it.
+  }
+
+  const bootstrap = join(root, ".gradle-wrapper-bootstrap");
+  await mkdir(bootstrap, { recursive: true });
+  await writeFile(
+    join(bootstrap, "settings.gradle"),
+    "rootProject.name = 'purple-creator-wrapper-bootstrap'\n",
+    "utf8",
+  );
+  await writeFile(join(bootstrap, "build.gradle"), "", "utf8");
+  try {
+    await captureCommand(
+      "gradle",
+      [
+        "--no-daemon",
+        "wrapper",
+        "--gradle-version",
+        GRADLE_VERSION,
+        "--distribution-type",
+        "bin",
+      ],
+      bootstrap,
+      60_000,
+    );
+    await cp(join(bootstrap, "gradle"), join(root, "gradle"), {
+      recursive: true,
+    });
+    await copyFile(join(bootstrap, "gradlew"), wrapper);
+    await chmod(wrapper, 0o755);
+  } catch (error) {
+    throw new MinecraftBuildError(
+      "Nie udało się przygotować narzędzi Gradle wymaganych do wygenerowania pliku .jar.",
+      503,
+      error instanceof Error ? error.message : String(error),
+    );
+  } finally {
+    await rm(bootstrap, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 async function buildJar(
   root: string,
   jarName: string,
   javaHomeOverride?: string,
 ): Promise<Buffer> {
   try {
+    await ensureGradleWrapper(root);
     const wrapper = join(root, "gradlew");
-    try {
-      await access(wrapper);
-    } catch {
-      await captureCommand(
-        "gradle",
-        [
-          "--no-daemon",
-          "wrapper",
-          "--gradle-version",
-          GRADLE_VERSION,
-          "--distribution-type",
-          "bin",
-        ],
-        root,
-        60_000,
-      );
-      await chmod(wrapper, 0o755);
-    }
     await captureCommand(
       wrapper,
       ["--no-daemon", "--stacktrace", "build"],

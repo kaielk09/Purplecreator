@@ -18,6 +18,60 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary List supported stable Minecraft releases from 1.20.1 onward
+ */
+export const GetMinecraftVersionsResponse = zod.object({
+  "versions": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Get the signed-in user's plan and project limit
+ */
+export const GetBillingStatusResponse = zod.object({
+  "plan": zod.enum(['free', 'plus']),
+  "projectLimit": zod.union([zod.literal(10),zod.literal(100)])
+})
+
+
+/**
+ * @summary Start the fixed-price 20 PLN Plus checkout
+ */
+export const CreateTostHostCheckoutResponse = zod.object({
+  "paymentUrl": zod.string().url(),
+  "amount": zod.literal(20),
+  "currency": zod.enum(['PLN'])
+})
+
+
+/**
+ * @summary Receive and independently verify a TostHost payment notification
+ */
+export const ReceiveTostHostWebhookQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const ReceiveTostHostWebhookBody = zod.object({
+  "transactionId": zod.string(),
+  "status": zod.string().optional(),
+  "isSandbox": zod.boolean().optional(),
+  "customReference": zod.string().optional()
+})
+
+export const ReceiveTostHostWebhookResponse = zod.void()
+
+
+/**
+ * @summary Verify checkout return and redirect to the app
+ */
+export const ReturnFromTostHostQueryParams = zod.object({
+  "reference": zod.coerce.string().uuid()
+})
+
+export const ReturnFromTostHostResponse = zod.void()
+
+
+/**
  * @summary List the signed-in user's projects
  */
 export const ListProjectsResponseItem = zod.object({

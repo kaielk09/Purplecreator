@@ -43,7 +43,7 @@ type CacheEntry = { expiresAt: number; value: unknown };
 
 const metadataCache = new Map<string, CacheEntry>();
 const BUILD_TIMEOUT_MS = 240_000;
-const GRADLE_VERSION = "9.2.1";
+const GRADLE_VERSION = "9.8.0";
 const FOOJAY_VERSION = "1.0.0";
 
 export class MinecraftBuildError extends Error {
@@ -119,6 +119,21 @@ function compareDottedVersions(left: string, right: string): number {
     if (difference !== 0) return difference;
   }
   return left.localeCompare(right);
+}
+
+export async function listMinecraftReleaseVersions(): Promise<string[]> {
+  const manifest = await fetchJson<ReleaseManifest>(
+    "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
+  );
+  return (manifest.versions ?? [])
+    .filter(
+      (version) =>
+        version.type === "release" &&
+        /^\d+\.\d+(?:\.\d+)?$/.test(version.id) &&
+        compareDottedVersions(version.id, "1.20.1") >= 0,
+    )
+    .map((version) => version.id)
+    .sort((a, b) => compareDottedVersions(b, a));
 }
 
 async function resolveMinecraftVersion(requested: string): Promise<string> {
@@ -354,8 +369,14 @@ async function getFabricBuildVersions(version: string): Promise<{
     const yarnList = await fetchJson<
       Array<{ version: string; stable?: boolean; gameVersion?: string }>
     >(`https://meta.fabricmc.net/v2/versions/yarn/${encodeURIComponent(version)}`);
-    yarn = yarnList
-      .filter((entry) => entry.stable && entry.gameVersion === version)
+    const matchingYarn = yarnList.filter(
+      (entry) => entry.gameVersion === version,
+    );
+    // Fabric's metadata currently marks some older, complete Yarn builds as
+    // unstable. Prefer stable mappings when present, but don't reject a
+    // supported game version if only the published fallback mappings remain.
+    const stableYarn = matchingYarn.filter((entry) => entry.stable);
+    yarn = (stableYarn.length > 0 ? stableYarn : matchingYarn)
       .map((entry) => entry.version)
       .sort(compareDottedVersions)
       .at(-1);
@@ -1121,8 +1142,8 @@ async function findJavaHome(major: number): Promise<string | null> {
       try {
         await access(java);
         const version = await captureCommand(java, ["-version"], candidate, 10_000);
-        if (new RegExp(`version "${major}\\\\.`).test(version)) return candidate;
-        if (new RegExp(`openjdk ${major}\\\\b`).test(version)) return candidate;
+        if (new RegExp(`version "${major}\\.`).test(version)) return candidate;
+        if (new RegExp(`openjdk ${major}\\b`).test(version)) return candidate;
       } catch {
         // Continue through Gradle's downloaded JDKs.
       }
@@ -1212,7 +1233,9 @@ async function buildJar(
 ): Promise<Buffer> {
   try {
     const wrapper = join(root, "gradlew");
-    if (!javaHomeOverride) {
+    try {
+      await access(wrapper);
+    } catch {
       await captureCommand(
         "gradle",
         [
@@ -1295,10 +1318,7 @@ export async function generateMinecraftArtifact(
         fabricVersions,
         fileName,
       );
-      const javaHome =
-        buildJavaForMinecraft(gameVersion) >= 25
-          ? await ensureJdk25(root)
-          : undefined;
+      const javaHome = await ensureJdk25(root);
       const buffer = await buildJar(root, fileName, javaHome);
       if (buffer.length === 0 || buffer.length > 50 * 1024 * 1024) {
         throw new MinecraftBuildError(

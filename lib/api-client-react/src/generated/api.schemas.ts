@@ -9,6 +9,58 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface MinecraftVersionsResponse {
+  versions: string[];
+}
+
+export type BillingStatusPlan = typeof BillingStatusPlan[keyof typeof BillingStatusPlan];
+
+
+export const BillingStatusPlan = {
+  free: 'free',
+  plus: 'plus',
+} as const;
+
+export type BillingStatusProjectLimit = typeof BillingStatusProjectLimit[keyof typeof BillingStatusProjectLimit];
+
+
+export const BillingStatusProjectLimit = {
+  NUMBER_10: 10,
+  NUMBER_100: 100,
+} as const;
+
+export interface BillingStatus {
+  plan: BillingStatusPlan;
+  projectLimit: BillingStatusProjectLimit;
+}
+
+export type CheckoutResponseAmount = typeof CheckoutResponseAmount[keyof typeof CheckoutResponseAmount];
+
+
+export const CheckoutResponseAmount = {
+  NUMBER_20: 20,
+} as const;
+
+export type CheckoutResponseCurrency = typeof CheckoutResponseCurrency[keyof typeof CheckoutResponseCurrency];
+
+
+export const CheckoutResponseCurrency = {
+  PLN: 'PLN',
+} as const;
+
+export interface CheckoutResponse {
+  paymentUrl: string;
+  amount: CheckoutResponseAmount;
+  currency: CheckoutResponseCurrency;
+}
+
+export interface TostHostWebhook {
+  transactionId: string;
+  status?: string;
+  isSandbox?: boolean;
+  customReference?: string;
+}
+
 export type ProjectBlockSettings = { [key: string]: unknown };
 
 export interface ProjectBlock {
@@ -106,4 +158,12 @@ export interface UploadUrlResponse {
 export interface ErrorEnvelope {
   error: string;
 }
+
+export type ReceiveTostHostWebhookParams = {
+token: string;
+};
+
+export type ReturnFromTostHostParams = {
+reference: string;
+};
 

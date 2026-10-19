@@ -14,6 +14,10 @@ tags:
     description: Minecraft mod and plugin projects
   - name: storage
     description: Project icon uploads and file serving
+  - name: minecraft
+    description: Supported Minecraft releases
+  - name: billing
+    description: Purple Creator Plus checkout and account entitlement
 paths:
   /healthz:
     get:
@@ -28,6 +32,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /minecraft/versions:
+    get:
+      operationId: getMinecraftVersions
+      tags: [minecraft]
+      summary: List supported stable Minecraft releases from 1.20.1 onward
+      responses:
+        "200":
+          description: Exact stable Minecraft release IDs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MinecraftVersionsResponse"
+        "503":
+          description: Mojang version metadata is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /billing/status:
+    get:
+      operationId: getBillingStatus
+      tags: [billing]
+      summary: Get the signed-in user's plan and project limit
+      responses:
+        "200":
+          description: Current plan entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /billing/tosthost/checkout:
+    post:
+      operationId: createTostHostCheckout
+      tags: [billing]
+      summary: Start the fixed-price 20 PLN Plus checkout
+      responses:
+        "200":
+          description: TostHost payment link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: Payment provider could not create checkout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Payment provider is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /billing/tosthost/webhook:
+    post:
+      operationId: receiveTostHostWebhook
+      tags: [billing]
+      summary: Receive and independently verify a TostHost payment notification
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TostHostWebhook"
+      responses:
+        "204":
+          description: Notification processed or safely ignored
+        "401":
+          description: Invalid webhook token
+        "503":
+          description: TostHost status could not be verified
+  /billing/tosthost/return:
+    get:
+      operationId: returnFromTostHost
+      tags: [billing]
+      summary: Verify checkout return and redirect to the app
+      parameters:
+        - name: reference
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "302":
+          description: Redirect to the app with payment result
   /projects:
     get:
       operationId: listProjects
@@ -73,6 +182,12 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "401":
           description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: The account has reached its project limit
           content:
             application/json:
               schema:
@@ -280,6 +395,49 @@ components:
           type: string
       required:
         - status
+    MinecraftVersionsResponse:
+      type: object
+      properties:
+        versions:
+          type: array
+          items:
+            type: string
+      required: [versions]
+    BillingStatus:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [free, plus]
+        projectLimit:
+          type: integer
+          enum: [10, 100]
+      required: [plan, projectLimit]
+    CheckoutResponse:
+      type: object
+      properties:
+        paymentUrl:
+          type: string
+          format: uri
+        amount:
+          type: number
+          enum: [20]
+        currency:
+          type: string
+          enum: [PLN]
+      required: [paymentUrl, amount, currency]
+    TostHostWebhook:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        status:
+          type: string
+        isSandbox:
+          type: boolean
+        customReference:
+          type: string
+      required: [transactionId]
     ProjectBlock:
       type: object
       properties:

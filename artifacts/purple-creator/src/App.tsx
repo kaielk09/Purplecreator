@@ -8,6 +8,9 @@ import {
   useCreateProject,
   useDeleteProject,
   useGenerateProjectArtifact,
+  useCreateTostHostCheckout,
+  useGetBillingStatus,
+  useGetMinecraftVersions,
   useGetProject,
   useListProjects,
   useRequestUploadUrl,
@@ -93,7 +96,6 @@ const clerkAppearance = {
   },
 };
 
-const versions = ['1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16', '1.17', '1.18', '1.19', '1.20', '1.21', '26.1', '26.2', '26.3', 'Latest'];
 const iconURL = (path?: string | null) => path ? `/api/storage${path}` : '';
 const uid = () => globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const formatDate = (value?: string) => value ? new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value)) : 'Przed chwilą';
@@ -254,6 +256,19 @@ function AppFrame({ children, active = 'projects' }: { children: ReactNode; acti
   const { user } = useUser();
   const { signOut } = useClerk();
   const [mobileNav, setMobileNav] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const billing = useGetBillingStatus();
+  const checkout = useCreateTostHostCheckout();
+  const beginCheckout = () => {
+    setCheckoutError('');
+    checkout.mutate(undefined, {
+      onSuccess: result => window.location.assign(result.paymentUrl),
+      onError: error => {
+        const responseError = error as { data?: { error?: string } };
+        setCheckoutError(responseError.data?.error ?? 'Nie udało się rozpocząć płatności.');
+      },
+    });
+  };
   return <div className="min-h-[100dvh] bg-[#17111f]">
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[244px] flex-col border-r border-[#34283d] bg-[#1b1423] px-4 py-5 transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
       <div className="flex items-center justify-between px-1"><Brand /><button className="rounded-lg p-2 text-[#a59aaf] md:hidden" onClick={() => setMobileNav(false)} aria-label="Zamknij nawigację" data-testid="button-close-navigation"><X size={17} /></button></div>
@@ -280,7 +295,16 @@ function AppFrame({ children, active = 'projects' }: { children: ReactNode; acti
     <div className="min-h-[100dvh] md:pl-[244px]">
       <header className="sticky top-0 z-20 flex h-[66px] items-center justify-between border-b border-[#34283d] bg-[#17111f]/90 px-5 backdrop-blur-xl md:px-9">
         <div className="flex items-center gap-3"><button onClick={() => setMobileNav(true)} className="rounded-lg p-2 text-[#a99daf] md:hidden" aria-label="Otwórz nawigację" data-testid="button-open-navigation"><PanelLeftClose size={17} /></button><div className="hidden items-center gap-2 text-[11px] text-[#766c80] sm:flex"><span>Warsztat</span><span>/</span><span className="text-[#c5b7ce]">{active === 'new' ? 'Nowy projekt' : active === 'editor' ? 'Edytor bloków' : 'Projekty'}</span></div></div>
-        <div className="flex items-center gap-2 rounded-full border border-[#493751] bg-[#241a2d] px-3 py-1.5 text-[10px] text-[#b7a7c2]"><span className="h-1.5 w-1.5 rounded-full bg-[#8fd8b5]" /> Twoje pomysły są tutaj zapisane</div>
+        <div className="flex items-center gap-2">
+          {billing.data?.plan === 'plus'
+            ? <div className="rounded-full border border-[#73518b] bg-[#30213b] px-3 py-1.5 text-[10px] font-semibold text-[#e1c2f5]" data-testid="status-plus-plan">Plus · limit 100</div>
+            : <button onClick={beginCheckout} disabled={checkout.isPending} className="inline-flex items-center gap-1.5 rounded-xl bg-[#b982eb] px-3.5 py-2 text-[10px] font-extrabold text-[#22152d] transition hover:bg-[#d0a3f3] disabled:cursor-wait disabled:opacity-60" data-testid="button-buy-plus">
+                {checkout.isPending ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                Kup Plus · 20 zł
+              </button>}
+          {checkoutError && <span className="hidden max-w-[220px] text-[9px] text-[#efa9ab] sm:inline" role="alert">{checkoutError}</span>}
+          <div className="hidden items-center gap-2 rounded-full border border-[#493751] bg-[#241a2d] px-3 py-1.5 text-[10px] text-[#b7a7c2] sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-[#8fd8b5]" /> Twoje pomysły są tutaj zapisane</div>
+        </div>
       </header>
       <main className="mx-auto max-w-[1440px] px-5 py-8 md:px-9 md:py-10">{children}</main>
     </div>
@@ -341,14 +365,19 @@ function CreateProjectPage() {
   const client = useQueryClient();
   const create = useCreateProject();
   const upload = useRequestUploadUrl();
+  const versionsQuery = useGetMinecraftVersions();
+  const versions = versionsQuery.data?.versions ?? [];
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'mod' | 'plugin'>('mod');
-  const [version, setVersion] = useState('1.21');
+  const [version, setVersion] = useState('');
   const [iconPath, setIconPath] = useState<string | null>(null);
   const [iconPreview, setIconPreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
+  useEffect(() => {
+    if (versions.length > 0 && !versions.includes(version)) setVersion(versions[0]!);
+  }, [versions, version]);
   const validTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
   const chooseIcon = async (file?: File) => {
     if (!file) return;
@@ -374,13 +403,17 @@ function CreateProjectPage() {
     event.preventDefault();
     setError('');
     if (!name.trim()) { setError('Nadaj projektowi nazwę, aby rozpocząć.'); return; }
+    if (!versions.length || !version) { setError('Nie udało się pobrać wersji Minecrafta. Spróbuj ponownie za chwilę.'); return; }
     if (uploading) return;
     const payload: ProjectInput = { name: name.trim(), category, version, iconPath, blocks: [] };
     create.mutate({ data: payload }, { onSuccess: project => {
       client.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       client.invalidateQueries({ queryKey: getGetProjectQueryKey(project.id) });
       setLocation(`/editor/${project.id}`);
-    }, onError: () => setError('Nie udało się utworzyć projektu. Sprawdź połączenie i spróbuj ponownie.') });
+    }, onError: error => {
+      const responseError = error as { data?: { error?: string } };
+      setError(responseError.data?.error ?? 'Nie udało się utworzyć projektu. Sprawdź połączenie i spróbuj ponownie.');
+    } });
   };
   return <AppFrame active="new">
     <div className="mx-auto max-w-[850px] fade-up">
@@ -393,7 +426,7 @@ function CreateProjectPage() {
             <div><div className="mb-2 text-[11px] font-bold text-[#e4d9eb]">Co chcesz stworzyć?</div><div className="grid grid-cols-2 gap-3">
               {(['mod', 'plugin'] as const).map(kind => <button type="button" key={kind} onClick={() => setCategory(kind)} className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition ${category === kind ? 'border-[#9468ae] bg-[#36263f] ring-1 ring-[#9468ae]/25' : 'border-[#45364e] bg-[#1b1521] hover:border-[#695279]'}`} data-testid={`button-category-${kind}`}><span className={`grid h-9 w-9 place-items-center rounded-xl ${kind === 'mod' ? 'bg-[#493252] text-[#d3a8ef]' : 'bg-[#2b403b] text-[#9bdbbf]'}`}>{kind === 'mod' ? <Puzzle size={17} /> : <Command size={17} />}</span><span><span className="block text-[11px] font-bold capitalize text-[#e8deef]">{categoryLabel(kind)}</span><span className="mt-0.5 block text-[9px] text-[#96899f]">{kind === 'mod' ? 'Zmienia rozgrywkę' : 'Rozbudowuje serwer'}</span></span>{category === kind && <Check size={14} className="ml-auto text-[#d2a2f0]" />}</button>)}
             </div></div>
-            <div><label htmlFor="mc-version" className="mb-2 block text-[11px] font-bold text-[#e4d9eb]">Wersja Minecrafta</label><div className="relative"><select id="mc-version" value={version} onChange={e => setVersion(e.target.value)} className="h-11 w-full appearance-none rounded-xl border border-[#4a3955] bg-[#191320] px-3.5 text-[12px] text-[#eee5f2] outline-none focus:border-[#a36ecb]" data-testid="select-minecraft-version">{versions.map(v => <option key={v} value={v}>{v === 'Latest' ? 'Najnowsza wersja' : `Minecraft ${v}`}</option>)}</select><ChevronDown size={15} className="pointer-events-none absolute right-3.5 top-3.5 text-[#96899f]" /></div></div>
+            <div><label htmlFor="mc-version" className="mb-2 block text-[11px] font-bold text-[#e4d9eb]">Wersja Minecrafta</label><div className="relative"><select id="mc-version" value={version} onChange={e => setVersion(e.target.value)} disabled={!versions.length} className="h-11 w-full appearance-none rounded-xl border border-[#4a3955] bg-[#191320] px-3.5 text-[12px] text-[#eee5f2] outline-none focus:border-[#a36ecb] disabled:opacity-60" data-testid="select-minecraft-version">{versions.length ? versions.map(v => <option key={v} value={v}>Minecraft {v}</option>) : <option value="">{versionsQuery.isError ? 'Nie udało się pobrać wersji' : 'Ładowanie wersji…'}</option>}</select><ChevronDown size={15} className="pointer-events-none absolute right-3.5 top-3.5 text-[#96899f]" /></div></div>
           </div>
           <div><div className="mb-2 text-[11px] font-bold text-[#e4d9eb]">Ikona projektu <span className="font-normal text-[#7f7487]">· opcjonalnie</span></div><label className="group flex min-h-[190px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#594663] bg-[#1a1420] px-4 text-center transition hover:border-[#ac82cb] hover:bg-[#241a2d]" data-testid="dropzone-project-icon">
             {iconPreview ? <><img src={iconPreview} alt="Podgląd ikony projektu" className="mb-3 h-20 w-20 rounded-2xl border border-[#594663] object-cover" data-testid="img-project-icon-preview" /><span className="max-w-full truncate text-[10px] text-[#c4b5cf]">{fileName}</span><span className="mt-1 text-[9px] text-[#877a91]">Wybierz inną</span></> : <><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#30223a] text-[#c295e0] transition group-hover:scale-105"><ImagePlus size={20} /></span><span className="mt-3 text-[10px] font-semibold text-[#c7b9d0]">Dodaj ikonę</span><span className="mt-1 text-[9px] text-[#82768b]">PNG, JPG, WEBP, GIF<br />Do 5 MB</span></>}
@@ -401,7 +434,7 @@ function CreateProjectPage() {
           </label>{uploading && <div className="mt-2 flex items-center justify-center gap-2 text-[9px] text-[#b991d6]" data-testid="status-icon-upload"><LoaderCircle size={12} className="animate-spin" /> Przesyłanie ikony…</div>}</div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#3b2e44] bg-[#1d1624] px-5 py-4 sm:px-8">
-          <div className="text-[9px] text-[#877b8f]">Szczegóły zmienisz w dowolnej chwili w edytorze.</div><div className="flex items-center gap-3"><Link href="/projects" data-testid="button-cancel-project" className="px-3 py-2 text-[10px] font-semibold text-[#a395ac] hover:text-white">Anuluj</Link><button type="submit" disabled={!name.trim() || uploading || create.isPending} className="inline-flex items-center gap-2 rounded-xl bg-[#b982eb] px-4 py-2.5 text-[10px] font-extrabold text-[#21152c] transition hover:bg-[#d0a3f3] disabled:cursor-not-allowed disabled:opacity-50" data-testid="button-save-project">{create.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <ArrowRight size={14} />} Utwórz projekt</button></div>
+          <div className="text-[9px] text-[#877b8f]">Szczegóły zmienisz w dowolnej chwili w edytorze.</div><div className="flex items-center gap-3"><Link href="/projects" data-testid="button-cancel-project" className="px-3 py-2 text-[10px] font-semibold text-[#a395ac] hover:text-white">Anuluj</Link><button type="submit" disabled={!name.trim() || !version || !versions.length || uploading || create.isPending} className="inline-flex items-center gap-2 rounded-xl bg-[#b982eb] px-4 py-2.5 text-[10px] font-extrabold text-[#21152c] transition hover:bg-[#d0a3f3] disabled:cursor-not-allowed disabled:opacity-50" data-testid="button-save-project">{create.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <ArrowRight size={14} />} Utwórz projekt</button></div>
         </div>
         {error && <div className="border-t border-[#604049] bg-[#321f2a] px-8 py-3 text-[10px] text-[#efa9ab]" role="alert" data-testid="status-project-error">{error}</div>}
       </form>

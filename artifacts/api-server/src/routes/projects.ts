@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import { Router, type IRouter } from "express";
 import {
@@ -12,7 +12,11 @@ import {
   UpdateProjectParams,
   UpdateProjectResponse,
 } from "@workspace/api-zod";
-import { db, projectsTable } from "@workspace/db";
+import {
+  db,
+  projectsTable,
+  userEntitlementsTable,
+} from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -62,19 +66,48 @@ router.post("/projects", async (req, res): Promise<void> => {
     return;
   }
 
-  const [project] = await db
-    .insert(projectsTable)
-    .values({
-      ownerUserId: userId,
-      name: parsed.data.name,
-      category: parsed.data.category,
-      version: parsed.data.version,
-      iconPath: parsed.data.iconPath ?? null,
-      blocks: parsed.data.blocks,
-    })
-    .returning();
+  const created = await db.transaction(async (tx) => {
+    // Serialize concurrent creates from one account so the cap cannot be raced.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 0))`,
+    );
+    const [entitlement] = await tx
+      .select()
+      .from(userEntitlementsTable)
+      .where(eq(userEntitlementsTable.ownerUserId, userId))
+      .limit(1);
+    const projectLimit = entitlement?.projectLimit ?? 10;
+    const [total] = await tx
+      .select({ count: count() })
+      .from(projectsTable)
+      .where(eq(projectsTable.ownerUserId, userId));
+    if ((total?.count ?? 0) >= projectLimit) {
+      return { kind: "limit" as const, projectLimit };
+    }
 
-  res.status(201).json(CreateProjectResponse.parse(serializeProject(project)));
+    const [project] = await tx
+      .insert(projectsTable)
+      .values({
+        ownerUserId: userId,
+        name: parsed.data.name,
+        category: parsed.data.category,
+        version: parsed.data.version,
+        iconPath: parsed.data.iconPath ?? null,
+        blocks: parsed.data.blocks,
+      })
+      .returning();
+    return { kind: "created" as const, project: project! };
+  });
+
+  if (created.kind === "limit") {
+    res.status(409).json({
+      error: `Osiągnięto limit ${created.projectLimit} projektów. Kup Plus, aby zwiększyć go do 100.`,
+    });
+    return;
+  }
+  res
+    .status(201)
+    .json(CreateProjectResponse.parse(serializeProject(created.project)));
 });
 
 router.get("/projects/:id", async (req, res): Promise<void> => {

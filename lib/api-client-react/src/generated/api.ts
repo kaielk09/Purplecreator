@@ -20,11 +20,17 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BillingStatus,
+  CheckoutResponse,
   ErrorEnvelope,
   HealthStatus,
+  MinecraftVersionsResponse,
   Project,
   ProjectInput,
   ProjectUpdate,
+  ReceiveTostHostWebhookParams,
+  ReturnFromTostHostParams,
+  TostHostWebhook,
   UploadUrlRequest,
   UploadUrlResponse
 } from './api.schemas';
@@ -122,6 +128,414 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMinecraftVersionsUrl = () => {
+
+
+
+
+  return `/api/minecraft/versions`
+}
+
+/**
+ * @summary List supported stable Minecraft releases from 1.20.1 onward
+ */
+export const getMinecraftVersions = async ( options?: Parameters<typeof customFetch>[1]): Promise<MinecraftVersionsResponse> => {
+
+  return customFetch<MinecraftVersionsResponse>(getGetMinecraftVersionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMinecraftVersionsQueryKey = () => {
+    return [
+    `/api/minecraft/versions`
+    ] as const;
+    }
+
+
+export const getGetMinecraftVersionsQueryOptions = <TData = Awaited<ReturnType<typeof getMinecraftVersions>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMinecraftVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMinecraftVersionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMinecraftVersions>>> = ({ signal }) => getMinecraftVersions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMinecraftVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMinecraftVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof getMinecraftVersions>>>
+export type GetMinecraftVersionsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List supported stable Minecraft releases from 1.20.1 onward
+ */
+
+export function useGetMinecraftVersions<TData = Awaited<ReturnType<typeof getMinecraftVersions>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMinecraftVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMinecraftVersionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBillingStatusUrl = () => {
+
+
+
+
+  return `/api/billing/status`
+}
+
+/**
+ * @summary Get the signed-in user's plan and project limit
+ */
+export const getBillingStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<BillingStatus> => {
+
+  return customFetch<BillingStatus>(getGetBillingStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBillingStatusQueryKey = () => {
+    return [
+    `/api/billing/status`
+    ] as const;
+    }
+
+
+export const getGetBillingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBillingStatus>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBillingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBillingStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillingStatus>>> = ({ signal }) => getBillingStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBillingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBillingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBillingStatus>>>
+export type GetBillingStatusQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get the signed-in user's plan and project limit
+ */
+
+export function useGetBillingStatus<TData = Awaited<ReturnType<typeof getBillingStatus>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBillingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBillingStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTostHostCheckoutUrl = () => {
+
+
+
+
+  return `/api/billing/tosthost/checkout`
+}
+
+/**
+ * @summary Start the fixed-price 20 PLN Plus checkout
+ */
+export const createTostHostCheckout = async ( options?: Parameters<typeof customFetch>[1]): Promise<CheckoutResponse> => {
+
+  return customFetch<CheckoutResponse>(getCreateTostHostCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateTostHostCheckoutMutationKey = () => ['createTostHostCheckout'] as const;
+
+export const getCreateTostHostCheckoutMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTostHostCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTostHostCheckout>>, TError,void, TContext> => {
+
+const mutationKey = getCreateTostHostCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTostHostCheckout>>, void> = () => {
+
+
+          return  createTostHostCheckout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTostHostCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createTostHostCheckout>>>
+
+    export type CreateTostHostCheckoutMutationError = ErrorType<ErrorEnvelope>
+
+
+    /**
+ * @summary Start the fixed-price 20 PLN Plus checkout
+ */
+export const useCreateTostHostCheckout = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTostHostCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTostHostCheckout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateTostHostCheckoutMutationOptions(options));
+    }
+
+export const getReceiveTostHostWebhookUrl = (params: ReceiveTostHostWebhookParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/billing/tosthost/webhook?${stringifiedParams}` : `/api/billing/tosthost/webhook`
+}
+
+/**
+ * @summary Receive and independently verify a TostHost payment notification
+ */
+export const receiveTostHostWebhook = async (tostHostWebhook: TostHostWebhook,
+    params: ReceiveTostHostWebhookParams, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getReceiveTostHostWebhookUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(tostHostWebhook)
+  }
+);}
+
+
+
+
+
+export const getReceiveTostHostWebhookMutationKey = () => ['receiveTostHostWebhook'] as const;
+
+export const getReceiveTostHostWebhookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveTostHostWebhook>>, TError,ReceiveTostHostWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveTostHostWebhook>>, TError,ReceiveTostHostWebhookMutationVariables, TContext> => {
+
+const mutationKey = getReceiveTostHostWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveTostHostWebhook>>, ReceiveTostHostWebhookMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  receiveTostHostWebhook(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveTostHostWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof receiveTostHostWebhook>>>
+    export type ReceiveTostHostWebhookMutationBody = BodyType<TostHostWebhook>
+    export type ReceiveTostHostWebhookMutationError = ErrorType<void>
+    export type ReceiveTostHostWebhookMutationVariables = {data: BodyType<TostHostWebhook>;params: ReceiveTostHostWebhookParams}
+
+    /**
+ * @summary Receive and independently verify a TostHost payment notification
+ */
+export const useReceiveTostHostWebhook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveTostHostWebhook>>, TError,ReceiveTostHostWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveTostHostWebhook>>,
+        TError,
+        ReceiveTostHostWebhookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReceiveTostHostWebhookMutationOptions(options));
+    }
+
+export const getReturnFromTostHostUrl = (params: ReturnFromTostHostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/billing/tosthost/return?${stringifiedParams}` : `/api/billing/tosthost/return`
+}
+
+/**
+ * @summary Verify checkout return and redirect to the app
+ */
+export const returnFromTostHost = async (params: ReturnFromTostHostParams, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getReturnFromTostHostUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getReturnFromTostHostQueryKey = (params?: ReturnFromTostHostParams,) => {
+    return [
+    `/api/billing/tosthost/return`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getReturnFromTostHostQueryOptions = <TData = Awaited<ReturnType<typeof returnFromTostHost>>, TError = ErrorType<void>>(params: ReturnFromTostHostParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof returnFromTostHost>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getReturnFromTostHostQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof returnFromTostHost>>> = ({ signal }) => returnFromTostHost(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof returnFromTostHost>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ReturnFromTostHostQueryResult = NonNullable<Awaited<ReturnType<typeof returnFromTostHost>>>
+export type ReturnFromTostHostQueryError = ErrorType<void>
+
+
+/**
+ * @summary Verify checkout return and redirect to the app
+ */
+
+export function useReturnFromTostHost<TData = Awaited<ReturnType<typeof returnFromTostHost>>, TError = ErrorType<void>>(
+ params: ReturnFromTostHostParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof returnFromTostHost>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getReturnFromTostHostQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

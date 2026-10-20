@@ -975,6 +975,9 @@ async function writeFabricProject(
   const pluginId = versions.remap
     ? "net.fabricmc.fabric-loom-remap"
     : "net.fabricmc.fabric-loom";
+  const modDependencyConfiguration = versions.remap
+    ? "modImplementation"
+    : "implementation";
   const mappingLine = versions.yarn
     ? `  mappings "net.fabricmc:yarn:${versions.yarn}:v2"\n`
     : "";
@@ -993,8 +996,8 @@ repositories {
 
 dependencies {
   minecraft "com.mojang:minecraft:${gameVersion}"
-${mappingLine}  modImplementation "net.fabricmc:fabric-loader:${versions.loader}"
-  modImplementation "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
+${mappingLine}  ${modDependencyConfiguration} "net.fabricmc:fabric-loader:${versions.loader}"
+  ${modDependencyConfiguration} "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
 }
 
 ${javaSetupGradle(buildJava, targetJava)}

@@ -47,3 +47,21 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+.env
+.env.*
+!.env.example
+node_modules/
+.git/
+dist/
+build/
+.cache/
+
+.env
+.env.*
+!.env.example
+node_modules/
+.git/
+dist/
+build/
+.cache/

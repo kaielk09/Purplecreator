@@ -1,14 +1,27 @@
 {
-  "name": "@workspace/scripts",
-  "version": "0.0.0",
+  "name": "purple-creator",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "electron-builder --win portable"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "catalog:"
+  },
+  "description": "",
+  "main": "main.cjs",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "pl.purplecreator.desktop",
+    "productName": "Purple Creator",
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
   }
 }

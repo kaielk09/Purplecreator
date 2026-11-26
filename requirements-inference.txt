@@ -1,8 +1,12 @@
-# Install this file to run the pretrained inference engine.
-# No training libraries or training process are required.
-torch>=2.2
+# Runtime dependencies for pretrained inference.
+# Install PyTorch separately using the official selector for your OS/CUDA:
+# https://pytorch.org/get-started/locally/
+# Do not replace an existing CUDA-enabled PyTorch build blindly.
 transformers>=4.45,<5
 accelerate>=0.34
 safetensors>=0.4
-# Optional but recommended for low-VRAM NVIDIA GPUs:
-bitsandbytes>=0.43
+
+# Optional: low-VRAM 4-bit quantization on supported NVIDIA/Linux setups.
+# If unavailable, Purple Creator automatically attempts regular GPU precision.
+# Install separately only if your platform supports it:
+# pip install bitsandbytes

@@ -30,3 +30,8 @@ See:
 - `purple_core/ROADMAP_PRETRAINING.md` — readiness gates before training
 
 Purple Creator — evolving toward a model-first creation engine.
+
+
+## Training data
+
+The model architecture and implementation are intended to be original. Training data does not have to be authored by this project: reviewed third-party datasets may be used when their licenses and terms permit the intended use. See `training/README.md` and `training/DATASET_POLICY.md`. The dataset preparation utility validates manifests, deduplicates examples, and creates reproducible splits. No third-party dataset is pre-approved by default.

@@ -1,19 +1,29 @@
 # Architecture status
 
-Implemented foundation:
-- Request/result/artifact contracts (`contracts.py`)
-- Deterministic task routing (`routing.py`)
-- Adapter-injected orchestration shell (`pipeline.py`)
-- Code generation/review scaffolding (`code_engine.py`)
-- Mesh representation and OBJ output (`mesh3d.py`) plus operations
-- Generation profiles and capability catalog
+## Foundation implemented
+- Request/result/artifact contracts and deterministic task routing
+- Provider-neutral code generation interface and preflight review scaffold
+- Adapter-injected pipeline with bounded optional repair loop
+- Context packing with relevance ordering and source provenance
+- Plan validation and safe artifact-manifest checks
+- Allow-listed tool registry
+- Research adapter contract and source URL checks
+- Runtime configuration without artificial token or output-size caps
+- Generation profiles with planning targets (not benchmark guarantees)
+- Editable mesh data, OBJ serialization, and basic mesh operations
+- Primitive mesh builders: box, sphere, cylinder, cone
+- Rotation, scaling, translation, mesh merging and scene-to-mesh conversion
+- Mesh quality diagnostics and bounds
+- Starter regression tests for routing, manifests, primitive meshes and scene composition
 
-Not implemented yet:
-- Purple-trained weights and inference runtime
-- Model-driven planner/executor adapters
-- Multi-source retrieval with permission-aware project context
-- Compiler/runtime execution for generated code
-- Production-grade 3D topology generation, materials, UVs and export formats
-- Cancellation, streaming and persisted run telemetry
+## Still not implemented
+- Purple model weights, training or real inference adapter
+- Model-driven planner and executor implementations
+- Live research provider and permission-aware retrieval
+- Language compiler/runtime integrations in isolated environments
+- Robust progress streaming, cancellation and persisted telemetry
+- UV coordinates, normals, materials, texture mapping, rigging, animation and advanced formats
+- CI execution and published test/benchmark results
 
-The pipeline currently accepts injected interfaces. This prevents fake/demo output from being misrepresented as inference from Purple's model.
+## Truthful runtime status
+Current files are architecture and deterministic geometry utilities. The repo does not yet contain a trained model that can reason or generate artifacts by itself. Interfaces must be connected to real model inference before any AI capability is claimed.

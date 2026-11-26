@@ -33,7 +33,7 @@ class EngineAdditionsTests(unittest.TestCase):
 
     def test_python_syntax_checker(self):
         self.assertEqual(check_python("x = 2\n"), [])
-        self.assertEqual(check_python("def broken(:\n"), [])
+        self.assertEqual(check_python("def broken(:\\n")[0].code, "PY_SYNTAX")
 
     def test_generic_bracket_check(self):
         issues = check_generic("if (x {")

@@ -39,3 +39,10 @@ The repository now includes a real pretrained inference path and a command-line 
 
 Install optional inference dependencies with `pip install -r requirements-inference.txt`.
 The first `ask` or `code` command downloads the configured pretrained base model. This does not train Purple AI and does not use Purple-specific weights. The 3D command creates deterministic editable OBJ geometry from built-in primitive patterns and does not need model weights. See [TEST_NOW.md](../TEST_NOW.md) for setup and offline tests.
+
+
+## Training data policy
+
+Training examples may be sourced from external public datasets after license, provenance, privacy and quality review. This does not authorize importing another model's pretrained weights. See the `training/` directory for the manifest template and preparation utility.
+
+**Important:** the currently added experimental text CLI adapter still points to a third-party pretrained Qwen checkpoint. It is a temporary integration test, not the original Purple model. It must be replaced by the project's own architecture and trained checkpoint before claiming that text inference is 100% Purple-authored.

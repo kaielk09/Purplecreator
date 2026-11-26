@@ -28,9 +28,9 @@ class CodingSpec:
         self.validate()
         parts = [f"TASK: {self.task}", f"LANGUAGE: {self.language}", f"TARGET: {self.target}"]
         if self.context:
-            parts.append("CONTEXT:\\n" + self.context)
+            parts.append("CONTEXT:\n" + self.context)
         for title, values in (("REQUIREMENTS", self.requirements), ("CONSTRAINTS", self.constraints), ("FILES", self.expected_files), ("ACCEPTANCE CHECKS", self.acceptance_checks)):
             if values:
-                parts.append(title + ":\\n- " + "\\n- ".join(values))
+                parts.append(title + ":\n- " + "\n- ".join(values))
         parts.append("COMPLEXITY: " + self.complexity)
-        return "\\n\\n".join(parts)
+        return "\n\n".join(parts)

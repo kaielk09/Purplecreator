@@ -1,0 +1,27 @@
+name: Purple Core Smoke Tests
+
+on:
+  push:
+    paths:
+      - "purple_core/**"
+      - "requirements-inference.txt"
+      - ".github/workflows/purple-core-smoke.yml"
+  pull_request:
+    paths:
+      - "purple_core/**"
+      - "requirements-inference.txt"
+      - ".github/workflows/purple-core-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  offline-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run offline generation tests
+        run: python -m unittest discover -s purple_core/tests -p "test_live_generation.py" -v

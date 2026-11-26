@@ -58,49 +58,72 @@ class HuggingFaceRuntime:
         )
 
         load_kwargs: dict[str, Any] = {}
-        if torch.cuda.is_available():
+        use_cuda = torch.cuda.is_available()
+        if use_cuda:
             self._device = torch.cuda.get_device_name(0)
+            dtype = (
+                torch.bfloat16
+                if torch.cuda.is_bf16_supported()
+                else torch.float16
+            )
+            load_kwargs["torch_dtype"] = dtype
+            load_kwargs["device_map"] = "auto"
             if self.settings.load_in_4bit:
                 try:
+                    import bitsandbytes  # noqa: F401
                     from transformers import BitsAndBytesConfig
                     load_kwargs["quantization_config"] = BitsAndBytesConfig(
                         load_in_4bit=True,
                         bnb_4bit_quant_type="nf4",
-                        bnb_4bit_compute_dtype=(
-                            torch.bfloat16
-                            if torch.cuda.is_bf16_supported()
-                            else torch.float16
-                        ),
+                        bnb_4bit_compute_dtype=dtype,
                         bnb_4bit_use_double_quant=True,
                     )
-                    load_kwargs["device_map"] = "auto"
                 except Exception as exc:
                     self._load_note = (
-                        "4-bit loading unavailable; using standard GPU loading: "
+                        "4-bit quantization unavailable; trying normal GPU precision: "
                         + str(exc)
                     )
-                    load_kwargs["torch_dtype"] = (
-                        torch.float16
-                        if torch.cuda.is_available()
-                        else torch.float32
-                    )
-                    load_kwargs["device_map"] = "auto"
-            else:
-                load_kwargs["torch_dtype"] = (
-                    torch.bfloat16
-                    if torch.cuda.is_bf16_supported()
-                    else torch.float16
-                )
-                load_kwargs["device_map"] = "auto"
         else:
             self._device = "CPU"
             load_kwargs["torch_dtype"] = torch.float32
 
-        self._model = AutoModelForCausalLM.from_pretrained(
-            self.settings.model_id,
-            **load_kwargs,
-        )
-        if not torch.cuda.is_available():
+        try:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.settings.model_id,
+                **load_kwargs,
+            )
+        except Exception as exc:
+            if "quantization_config" not in load_kwargs:
+                raise RuntimeError(
+                    f"Could not load base model {self.settings.model_id}: {exc}"
+                ) from exc
+            # Fall back to non-quantized inference if bitsandbytes/CUDA
+            # is incompatible with the current Colab or local environment.
+            fallback_kwargs = {
+                "torch_dtype": (
+                    torch.bfloat16
+                    if use_cuda and torch.cuda.is_bf16_supported()
+                    else torch.float16 if use_cuda else torch.float32
+                )
+            }
+            if use_cuda:
+                fallback_kwargs["device_map"] = "auto"
+            try:
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.settings.model_id,
+                    **fallback_kwargs,
+                )
+                self._load_note = (
+                    "Loaded without 4-bit quantization after fallback. "
+                    f"Original quantized-load error: {exc}"
+                )
+            except Exception as fallback_exc:
+                raise RuntimeError(
+                    "Could not load model in 4-bit or fallback precision. "
+                    f"4-bit error: {exc}; fallback error: {fallback_exc}"
+                ) from fallback_exc
+
+        if not use_cuda:
             self._model.to("cpu")
         self._model.eval()
         self._load_note = (

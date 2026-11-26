@@ -1,8 +1,4 @@
-"""High-quality code-generation pipeline scaffolding for Purple Creator.
-
-Provider-agnostic interface. The trained model/runtime must implement generation.
-Generation has no arbitrary token ceiling in this core interface.
-"""
+"""Provider-agnostic code generation scaffold. No arbitrary token ceiling."""
 from dataclasses import dataclass, field
 from typing import Protocol
 from .coding_spec import CodingSpec
@@ -31,9 +27,7 @@ def build_quality_prompt(spec: CodingSpec, plan: CodePlan | None = None) -> str:
     spec.validate()
     planning = ""
     if plan:
-        planning = "\\nPLAN:\\n- " + "\\n- ".join(
-            [plan.summary, *plan.files, *plan.dependencies, *plan.tests, *plan.risk_notes]
-        )
+        planning = "\nPLAN:\n- " + "\n- ".join([plan.summary, *plan.files, *plan.dependencies, *plan.tests, *plan.risk_notes])
     return f"""You are Purple Creator's code-generation engine.
 Produce robust, maintainable, complete code that follows the task specification.
 Correctness is more important than verbosity. Never invent APIs or requirements.
@@ -51,9 +45,7 @@ Before final output, internally verify: every requirement is covered, API names 
 valid for the target version, edge cases are considered, dependencies are included,
 and the result is complete and consistent."""
 
-def generate_and_review(model: CodeModel, spec: CodingSpec, plan: CodePlan,
-                       max_attempts: int = 2) -> CodeOutput:
-    """Generate then run lightweight preflight checks; no output token cap."""
+def generate_and_review(model: CodeModel, spec: CodingSpec, plan: CodePlan, max_attempts: int = 2) -> CodeOutput:
     prompt = build_quality_prompt(spec, plan)
     code = ""
     findings: list[Finding] = []
@@ -65,7 +57,7 @@ def generate_and_review(model: CodeModel, spec: CodingSpec, plan: CodePlan,
         warnings = [f for f in findings if f.level == "warning"]
         if not hard_errors and not warnings:
             return CodeOutput(code, plan, findings, "preflight_passed", attempts)
-        prompt += "\\n\\nREVIEW FINDINGS FROM PRIOR OUTPUT:\\n" + "\\n".join(
+        prompt += "\n\nREVIEW FINDINGS FROM PRIOR OUTPUT:\n" + "\n".join(
             f"- {f.level}: line {f.line}: {f.message}" for f in findings
-        ) + "\\nRegenerate a complete corrected result; do not merely silence the checks."
+        ) + "\nRegenerate a complete corrected result; do not merely silence the checks."
     return CodeOutput(code, plan, findings, "needs_external_validation", attempts)

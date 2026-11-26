@@ -27,3 +27,15 @@ These are reusable foundations and deterministic utilities. No Purple model weig
 6. Improve 3D mesh topology, normals, UVs, material support and export.
 7. Run tests/CI and establish measured benchmarks.
 8. Training and evaluation remain the final phase.
+
+
+## Run before training
+
+The repository now includes a real pretrained inference path and a command-line entry point:
+- `python -m purple_core status`
+- `python -m purple_core ask "Explain a Python function"`
+- `python -m purple_core code "Create a Roblox points module" --language Luau --output ./generated`
+- `python -m purple_core 3d "Create a house with windows" --output ./generated3d`
+
+Install optional inference dependencies with `pip install -r requirements-inference.txt`.
+The first `ask` or `code` command downloads the configured pretrained base model. This does not train Purple AI and does not use Purple-specific weights. The 3D command creates deterministic editable OBJ geometry from built-in primitive patterns and does not need model weights. See [TEST_NOW.md](../TEST_NOW.md) for setup and offline tests.

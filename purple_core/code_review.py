@@ -21,7 +21,7 @@ def check_balanced_delimiters(source: str) -> list[Finding]:
         ch = source[i]
         nxt = source[i + 1] if i + 1 < len(source) else ""
         if comment:
-            if ch == "\\n":
+            if ch == "\n":
                 comment = False
             else:
                 i += 1
@@ -29,7 +29,7 @@ def check_balanced_delimiters(source: str) -> list[Finding]:
         elif quote:
             if escaped:
                 escaped = False
-            elif ch == "\\\\":
+            elif ch == chr(92):
                 escaped = True
             elif ch == quote:
                 quote = None
@@ -37,7 +37,7 @@ def check_balanced_delimiters(source: str) -> list[Finding]:
             if ch == "-" and nxt == "-":
                 comment = True
                 i += 1
-            elif ch in ("\\\'", \\"\\"):
+            elif ch == "'" or ch == chr(34):
                 quote = ch
             elif ch in PAIRS:
                 stack.append((ch, line))
@@ -46,7 +46,7 @@ def check_balanced_delimiters(source: str) -> list[Finding]:
                     findings.append(Finding("error", f"Unexpected closing delimiter {ch}", line))
                 else:
                     stack.pop()
-        if ch == "\\n":
+        if ch == "\n":
             line += 1
         i += 1
     for opening, opened_line in stack:

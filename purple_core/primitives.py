@@ -11,25 +11,32 @@ def make_uv_sphere(name: str = "Sphere", radius: float = 1.0, segments: int = 24
     _check_segments(rings, 2)
     if not math.isfinite(radius) or radius <= 0:
         raise ValueError("radius must be finite and positive")
-    verts: list[Vec3] = []
-    for r in range(rings + 1):
-        phi = math.pi * r / rings
+    verts: list[Vec3] = [(0.0, radius, 0.0)]
+    for ring in range(1, rings):
+        phi = math.pi * ring / rings
         for s in range(segments):
             theta = 2 * math.pi * s / segments
             verts.append((radius * math.sin(phi) * math.cos(theta),
                          radius * math.cos(phi),
                          radius * math.sin(phi) * math.sin(theta)))
+    bottom_index = len(verts)
+    verts.append((0.0, -radius, 0.0))
     faces = []
-    for r in range(rings):
+    first_ring = 1
+    for s in range(segments):
+        nxt = (s + 1) % segments
+        faces.append((0, first_ring + s, first_ring + nxt))
+    for ring in range(rings - 2):
+        start = first_ring + ring * segments
+        next_start = start + segments
         for s in range(segments):
-            a = r * segments + s
-            b = r * segments + (s + 1) % segments
-            c = (r + 1) * segments + (s + 1) % segments
-            d = (r + 1) * segments + s
-            if r > 0:
-                faces.append((a, b, d))
-            if r < rings - 1:
-                faces.append((b, c, d))
+            nxt = (s + 1) % segments
+            faces.extend([(start+s, next_start+s, next_start+nxt),
+                         (start+s, next_start+nxt, start+nxt)])
+    last_ring = first_ring + (rings - 2) * segments
+    for s in range(segments):
+        nxt = (s + 1) % segments
+        faces.append((last_ring+s, bottom_index, last_ring+nxt))
     return Mesh(name, verts, faces)
 
 def make_cylinder(name: str = "Cylinder", radius: float = 1.0, height: float = 2.0, segments: int = 24) -> Mesh:

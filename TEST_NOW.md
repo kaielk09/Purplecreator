@@ -17,6 +17,8 @@ Windows:
 ```bat
 .venv\Scripts\activate
 python -m pip install -U pip
+# First install PyTorch using https://pytorch.org/get-started/locally/
+# Choose the command matching your Windows/CUDA setup.
 pip install -r requirements-inference.txt
 ```
 
@@ -24,6 +26,7 @@ Linux:
 ```bash
 source .venv/bin/activate
 python -m pip install -U pip
+# Install PyTorch using https://pytorch.org/get-started/locally/
 pip install -r requirements-inference.txt
 ```
 

@@ -1,0 +1,8 @@
+# Install this file to run the pretrained inference engine.
+# No training libraries or training process are required.
+torch>=2.2
+transformers>=4.45,<5
+accelerate>=0.34
+safetensors>=0.4
+# Optional but recommended for low-VRAM NVIDIA GPUs:
+bitsandbytes>=0.43

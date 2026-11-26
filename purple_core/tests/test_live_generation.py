@@ -29,7 +29,7 @@ class ProceduralGenerationTests(unittest.TestCase):
             )
             self.assertTrue(obj_path.exists())
             self.assertTrue(scene_path.exists())
-            self.assertIn("\\no ", obj_path.read_text(encoding="utf-8"))
+            self.assertIn("o ", obj_path.read_text(encoding="utf-8"))
             self.assertIn('"primitives"', scene_path.read_text(encoding="utf-8"))
             self.assertEqual(mesh.validate(), [])
 

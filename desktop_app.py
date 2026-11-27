@@ -1,228 +1,199 @@
-"""Purple Creator Studio - visual Minecraft mod-maker prototype.
-This UI is a working project shell; loader code generation is not implemented yet.
-"""
 from __future__ import annotations
-
-import json
-import re
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import json, re
 from pathlib import Path
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
 
-BG = "#111019"
-PANEL = "#1b1723"
-PANEL2 = "#241d30"
-PURPLE = "#9b5cff"
-PURPLE2 = "#7138bd"
-TEXT = "#f4efff"
-MUTED = "#aaa0bd"
-BORDER = "#342a45"
+BG="#100d16"; PANEL="#1b1524"; PANEL2="#251b32"; PURPLE="#9154e8"; TEXT="#eee8f7"; MUTED="#aa9db9"
+CONTENT_KEYS=("blocks","items","mobs","recipes","guis","logic","structures","visuals")
+DEFAULT_PROJECT={"format_version":1,"name":"New Mod","mod_id":"new_mod","author":"","minecraft_version":"1.21.1","loader":"Fabric","project_folder":"","content":{k:[] for k in CONTENT_KEYS}}
 
-class PurpleCreatorApp(tk.Tk):
+class Studio(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Purple Creator Studio")
-        self.geometry("1180x760")
-        self.minsize(940, 620)
-        self.configure(bg=BG)
-        self.project = None
-        self.active_section = "Home"
-        self.sidebar_buttons = {}
-        self._build_shell()
-        self.show_section("Home")
-
-    def _build_shell(self):
-        sidebar = tk.Frame(self, bg="#15111d", width=218)
-        sidebar.pack(side="left", fill="y")
-        sidebar.pack_propagate(False)
-        brand = tk.Frame(sidebar, bg="#15111d")
-        brand.pack(fill="x", padx=18, pady=(22, 18))
-        tk.Label(brand, text="PURPLE", bg="#15111d", fg=TEXT,
-                 font=("Segoe UI", 19, "bold")).pack(anchor="w")
-        tk.Label(brand, text="CREATOR STUDIO", bg="#15111d", fg=PURPLE,
-                 font=("Segoe UI", 9, "bold")).pack(anchor="w")
-        tk.Label(sidebar, text="WORKSPACE", bg="#15111d", fg=MUTED,
-                font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=18, pady=(12, 8))
-        for name, icon in [("Home","⌂"),("Blocks & Items","▦"),("GUI Designer","▣"),
-                            ("Mob Creator","♟"),("Visual Logic","◇"),("Structures","▤"),
-                            ("Visuals & FX","✧"),("Project Settings","⚙")]:
-            btn=tk.Button(sidebar, text=f"  {icon}   {name}", anchor="w",
-                          command=lambda n=name:self.show_section(n),
-                          bg="#15111d", fg=TEXT, activebackground=PANEL2,
-                          activeforeground=TEXT, relief="flat", bd=0,
-                          font=("Segoe UI",10), padx=14, pady=10, cursor="hand2")
-            btn.pack(fill="x", padx=9, pady=2)
-            self.sidebar_buttons[name]=btn
-        footer=tk.Frame(sidebar,bg="#15111d")
-        footer.pack(side="bottom",fill="x",padx=15,pady=15)
-        tk.Label(footer,text="NO-CODE MOD WORKSHOP",bg="#15111d",fg=MUTED,
-                font=("Segoe UI",8,"bold")).pack(anchor="w")
-        tk.Label(footer,text="Prototype • Offline",bg="#15111d",fg="#7b718d",
-                font=("Segoe UI",8)).pack(anchor="w",pady=(4,0))
-
-        main=tk.Frame(self,bg=BG)
-        main.pack(side="left",fill="both",expand=True)
-        top=tk.Frame(main,bg=BG,height=62)
-        top.pack(fill="x",padx=24,pady=(16,8))
-        top.pack_propagate(False)
-        self.project_label=tk.Label(top,text="No project open",bg=BG,fg=MUTED,font=("Segoe UI",10))
-        self.project_label.pack(side="left",anchor="center")
-        tk.Button(top,text="＋  New Mod Project",command=self.new_project,
-                 bg=PURPLE2,fg="white",activebackground=PURPLE,relief="flat",
-                 font=("Segoe UI",10,"bold"),padx=14,pady=9,cursor="hand2").pack(side="right")
-        self.body=tk.Frame(main,bg=BG)
-        self.body.pack(fill="both",expand=True,padx=24,pady=(8,24))
-
-    def clear_body(self):
-        for w in self.body.winfo_children(): w.destroy()
-
-    def heading(self,title,subtitle):
-        tk.Label(self.body,text=title,bg=BG,fg=TEXT,font=("Segoe UI",22,"bold")).pack(anchor="w")
-        tk.Label(self.body,text=subtitle,bg=BG,fg=MUTED,font=("Segoe UI",10)).pack(anchor="w",pady=(4,18))
-
-    def card(self,parent,title,desc,button_text=None,command=None):
-        frame=tk.Frame(parent,bg=PANEL,highlightbackground=BORDER,highlightthickness=1)
-        frame.pack(fill="x",pady=6)
-        inner=tk.Frame(frame,bg=PANEL)
-        inner.pack(fill="x",padx=16,pady=14)
-        tk.Label(inner,text=title,bg=PANEL,fg=TEXT,font=("Segoe UI",12,"bold")).pack(anchor="w")
-        tk.Label(inner,text=desc,bg=PANEL,fg=MUTED,font=("Segoe UI",9),
-                wraplength=680,justify="left").pack(anchor="w",pady=(5,0))
-        if button_text:
-            tk.Button(inner,text=button_text,command=command,bg=PANEL2,fg=TEXT,
-                    activebackground=PURPLE2,relief="flat",padx=12,pady=7,
-                    cursor="hand2").pack(anchor="e",pady=(10,0))
-        return frame
-
-    def show_section(self,section):
-        self.active_section=section
-        self.clear_body()
-        for name,btn in self.sidebar_buttons.items():
-            btn.configure(bg=PANEL2 if name==section else "#15111d")
-        if section=="Home":
-            self.heading("Modding, without the code.","Visual tools to design your Minecraft mod and organize everything in one workspace.")
-            self.card(self.body,"Create a new mod","Start with the loader, Minecraft version and mod identity.", "Create project",self.new_project)
-            row=tk.Frame(self.body,bg=BG); row.pack(fill="x",pady=8)
-            for title,desc in [("Blocks & Items","Custom blocks, tools, food, recipes"),
-                               ("GUI Designer","Screens, buttons, panels, slots"),
-                               ("Mob Creator","Entity settings, stats, spawn and drops")]:
-                box=tk.Frame(row,bg=PANEL,highlightbackground=BORDER,highlightthickness=1)
-                box.pack(side="left",fill="both",expand=True,padx=(0,8))
-                tk.Label(box,text=title,bg=PANEL,fg=TEXT,font=("Segoe UI",11,"bold")).pack(anchor="w",padx=12,pady=(14,6))
-                tk.Label(box,text=desc,bg=PANEL,fg=MUTED,wraplength=180,justify="left",font=("Segoe UI",9)).pack(anchor="w",padx=12,pady=(0,14))
-            self.card(self.body,"Visual Logic","Build interactions with event → condition → action blocks, using menus and connectors instead of writing code.","Open logic",lambda:self.show_section("Visual Logic"))
-            self.card(self.body,"Project status","The current prototype saves project metadata. Exporting a working mod JAR is a later milestone.","View settings",lambda:self.show_section("Project Settings"))
-        elif section=="Blocks & Items":
-            self.heading("Blocks & Items","Create custom Minecraft content using property panels.")
-            for title,desc in [("Block Creator","Set hardness, resistance, sound, light, tool requirement and texture slots."),
-                              ("Item Creator","Configure item type, durability, stack size, food values and effects."),
-                              ("Recipe Builder","Visual crafting-grid editor and recipe output preview."),
-                              ("Creative Tab Organizer","Choose where your custom content appears.")]:
-                self.card(self.body,title,desc,"Open editor",lambda t=title:self.show_editor(t))
-        elif section=="GUI Designer":
-            self.heading("GUI Designer","Lay out a screen visually — arrange components and properties.")
-            self.card(self.body,"Canvas & Components","Future canvas with draggable labels, buttons, slots, progress bars, images and panels.","Open canvas",lambda:self.show_editor("GUI Canvas"))
-            self.card(self.body,"Button actions","Select a button and choose its action from an action menu.","Configure",lambda:self.show_editor("Button Action"))
-        elif section=="Mob Creator":
-            self.heading("Mob Creator","Configure your custom entity with guided settings.")
-            for title,desc in [("Entity identity","Display name, entity ID, category and size."),
-                              ("Attributes","Health, movement, attack, armor and knockback resistance."),
-                              ("Behavior presets","Passive, neutral, hostile, wander, follow, flee and guard presets."),
-                              ("Spawn & drops","Biome/time/conditions, spawn group and loot settings."),
-                              ("Appearance","Model and texture assignment, animation slots.")]:
-                self.card(self.body,title,desc,"Configure",lambda t=title:self.show_editor(t))
-        elif section=="Visual Logic":
-            self.heading("Visual Logic","A block-based event system. Connect event → optional conditions → actions.")
-            self.card(self.body,"Event palette","Examples: player right-clicks item, entity takes damage, block broken, tick timer.","Choose event",lambda:self.show_editor("Logic Event"))
-            self.card(self.body,"Conditions","Menus for checking player, item, world, distance, time, or entity state.","Add condition",lambda:self.show_editor("Logic Condition"))
-            self.card(self.body,"Actions","Effects, messages, teleport, spawn, give item, play sound, set variables and cooldowns.","Add action",lambda:self.show_editor("Logic Action"))
-            self.card(self.body,"Visual graph prototype","This first build is a navigation mockup; connected graph execution is not yet implemented.","Prototype info",lambda:messagebox.showinfo("Visual Logic","Graph execution is planned; no code is generated from logic yet."))
-        elif section=="Structures":
-            self.heading("Structure Studio","Plan structures from palettes and placement tools.")
-            for title,desc in [("Structure canvas","Grid-based build area, selection, rotate and mirror."),
-                              ("Block palette","Select blocks and create reusable palette sets."),
-                              ("Placement rules","Configure biome, spawn frequency and placement conditions.")]:
-                self.card(self.body,title,desc,"Open",lambda t=title:self.show_editor(t))
-        elif section=="Visuals & FX":
-            self.heading("Visuals & FX","Configure visual and audio effects in one place.")
-            for title,desc in [("Particles","Particle type, color, size, lifetime and emission settings."),
-                              ("Sounds","Sound event picker and playback conditions."),
-                              ("Animations","Animation timeline and keyframe editor (planned)."),
-                              ("Models & textures","Asset browser with previews (planned).")]:
-                self.card(self.body,title,desc,"Open",lambda t=title:self.show_editor(t))
-        elif section=="Project Settings":
-            self.heading("Project Settings","Project identity, target version and mod-loader selection.")
-            if not self.project:
-                self.card(self.body,"No project open","Create or open a project first.","Create project",self.new_project)
-            else:
-                for k,v in self.project.items():
-                    tk.Label(self.body,text=f"{k.replace('_',' ').title()}:  {v}",bg=BG,fg=TEXT,font=("Segoe UI",10)).pack(anchor="w",pady=3)
-                self.card(self.body,"Save project","Save the project settings JSON.","Save",self.save_project)
-
-    def show_editor(self,title):
-        self.clear_body()
-        self.heading(title,"Settings mockup. The visual editors and generator are under development.")
-        fields=["Display name","Internal ID","Description","Texture / asset path","Category"]
-        entries={}
-        for label in fields:
-            line=tk.Frame(self.body,bg=BG);line.pack(fill="x",pady=5)
-            tk.Label(line,text=label,width=22,anchor="w",bg=BG,fg=MUTED,font=("Segoe UI",10)).pack(side="left")
-            entry=tk.Entry(line,bg=PANEL,fg=TEXT,insertbackground=TEXT,relief="flat")
-            entry.pack(side="left",fill="x",expand=True,ipady=8)
-            entries[label]=entry
-        self.card(self.body,"Properties","These form fields are UI scaffolding only; Minecraft code export is not connected yet.")
-        tk.Button(self.body,text="← Back",command=lambda:self.show_section(self.active_section),bg=PANEL2,fg=TEXT,relief="flat",padx=14,pady=8).pack(anchor="w",pady=14)
-
+        self.geometry("1180x760"); self.minsize(1000,650); self.configure(bg=BG)
+        self.project=None; self.project_file=None; self.active="Dashboard"
+        self._style(); self._layout(); self.show("Dashboard")
+    def _style(self):
+        s=ttk.Style(self); s.theme_use("clam")
+        s.configure("Treeview",background=PANEL,foreground=TEXT,fieldbackground=PANEL,rowheight=29,borderwidth=0)
+        s.configure("Treeview.Heading",background=PANEL2,foreground=TEXT,font=("Segoe UI",9,"bold"))
+        s.map("Treeview",background=[("selected",PURPLE)],foreground=[("selected","white")])
+        s.configure("TCombobox",fieldbackground=PANEL,background=PANEL,foreground=TEXT)
+    def _layout(self):
+        self.sidebar=tk.Frame(self,bg="#15101c",width=210);self.sidebar.pack(side="left",fill="y");self.sidebar.pack_propagate(False)
+        tk.Label(self.sidebar,text="PURPLE",font=("Segoe UI",20,"bold"),bg="#15101c",fg=TEXT).pack(anchor="w",padx=18,pady=(22,0))
+        tk.Label(self.sidebar,text="CREATOR STUDIO",font=("Segoe UI",9,"bold"),bg="#15101c",fg=PURPLE).pack(anchor="w",padx=18)
+        tk.Label(self.sidebar,text="PROJECT TOOLS",font=("Segoe UI",8,"bold"),bg="#15101c",fg=MUTED).pack(anchor="w",padx=18,pady=(24,8))
+        nav=[("Dashboard","⌂"),("Blocks","▦"),("Items","◇"),("Recipes","▤"),("Mobs","♟"),("GUI Screens","▣"),("Visual Logic","⌘"),("Structures","▧"),("Visuals & FX","✧"),("Settings","⚙")]
+        for n,ico in nav:
+            tk.Button(self.sidebar,text=f"  {ico}   {n}",anchor="w",command=lambda name=n:self.show(name),bg="#15101c",fg=TEXT,activebackground=PANEL2,activeforeground=TEXT,relief="flat",font=("Segoe UI",10),padx=12,pady=9).pack(fill="x",padx=8)
+        tk.Label(self.sidebar,text="Offline project editor",bg="#15101c",fg="#81748f",font=("Segoe UI",8)).pack(side="bottom",anchor="w",padx=15,pady=18)
+        main=tk.Frame(self,bg=BG);main.pack(side="left",fill="both",expand=True)
+        bar=tk.Frame(main,bg=BG);bar.pack(fill="x",padx=20,pady=(15,10))
+        self.projlabel=tk.Label(bar,text="No project loaded",bg=BG,fg=MUTED,font=("Segoe UI",9));self.projlabel.pack(side="left")
+        for text,cmd in [("Open",self.open_project),("Save",self.save_project),("New project",self.new_project)]:
+            tk.Button(bar,text=text,command=cmd,bg=PANEL2 if text!="New project" else PURPLE,fg=TEXT,relief="flat",padx=12,pady=7).pack(side="right",padx=(6,0))
+        self.content=tk.Frame(main,bg=BG);self.content.pack(fill="both",expand=True,padx=22,pady=(4,20))
+    def ensure_project(self):
+        if self.project is None:
+            messagebox.showinfo("Project required","Create a project first.");return False
+        return True
+    def show(self,section):
+        self.active=section
+        for w in self.content.winfo_children():w.destroy()
+        if section=="Dashboard":return self.dashboard()
+        if section in ("Blocks","Items","Recipes","Mobs"):return self.list_editor(section)
+        self.placeholder(section)
+    def header(self,title,subtitle):
+        tk.Label(self.content,text=title,bg=BG,fg=TEXT,font=("Segoe UI",22,"bold")).pack(anchor="w")
+        tk.Label(self.content,text=subtitle,bg=BG,fg=MUTED,font=("Segoe UI",10)).pack(anchor="w",pady=(3,14))
+    def dashboard(self):
+        name=self.project["name"] if self.project else "No project"
+        self.header("Creator workspace",f"{name} — visual project editing without writing code.")
+        if not self.project:
+            self.card("Start a project","Set mod ID, Minecraft version, loader and project location.",self.new_project,"Create project")
+            self.card("Open an existing project","Load a saved purple_project.json project file.",self.open_project,"Open project")
+            return
+        stats=tk.Frame(self.content,bg=BG);stats.pack(fill="x",pady=8)
+        for key,label in [("blocks","Blocks"),("items","Items"),("recipes","Recipes"),("mobs","Mobs")]:
+            box=tk.Frame(stats,bg=PANEL);box.pack(side="left",fill="x",expand=True,padx=4)
+            count=len(self.project["content"].get(key,[]))
+            tk.Label(box,text=str(count),bg=PANEL,fg=PURPLE,font=("Segoe UI",24,"bold")).pack(anchor="w",padx=12,pady=(10,0))
+            tk.Label(box,text=label,bg=PANEL,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",padx=12,pady=(0,10))
+        self.card("Blocks","Create block definitions with hardness, light, texture and tool properties.",lambda:self.show("Blocks"),"Manage blocks")
+        self.card("Items","Create items with stack limit, durability, item category and tooltip.",lambda:self.show("Items"),"Manage items")
+        self.card("Recipes","Create shaped or shapeless recipe records.",lambda:self.show("Recipes"),"Manage recipes")
+        self.card("Mobs","Configure entity records, stats and behavior presets.",lambda:self.show("Mobs"),"Manage mobs")
+        self.card("Project save","Save edits to your project JSON file.",self.save_project,"Save now")
+    def card(self,title,desc,cmd,button):
+        f=tk.Frame(self.content,bg=PANEL);f.pack(fill="x",pady=5)
+        tk.Label(f,text=title,bg=PANEL,fg=TEXT,font=("Segoe UI",11,"bold")).pack(anchor="w",padx=14,pady=(12,3))
+        tk.Label(f,text=desc,bg=PANEL,fg=MUTED,font=("Segoe UI",9),wraplength=700,justify="left").pack(anchor="w",padx=14)
+        tk.Button(f,text=button,command=cmd,bg=PANEL2,fg=TEXT,relief="flat",padx=12,pady=6).pack(anchor="e",padx=12,pady=10)
+    def list_editor(self,section):
+        if not self.ensure_project():return
+        key={"Blocks":"blocks","Items":"items","Recipes":"recipes","Mobs":"mobs"}[section]
+        self.header(section+" editor","Create, edit and remove entries. Changes are stored in the project and can be saved.")
+        wrap=tk.Frame(self.content,bg=BG);wrap.pack(fill="both",expand=True)
+        tree=ttk.Treeview(wrap,columns=("id","name","details"),show="headings")
+        for col,title,width in [("id","Internal ID",180),("name","Display name",210),("details","Properties",520)]:
+            tree.heading(col,text=title);tree.column(col,width=width,anchor="w")
+        tree.pack(fill="both",expand=True,pady=(0,10))
+        def refresh():
+            tree.delete(*tree.get_children())
+            for i,obj in enumerate(self.project["content"].get(key,[])):
+                details=", ".join(f"{k}: {v}" for k,v in obj.items() if k not in ("id","name"))
+                tree.insert("", "end",iid=str(i),values=(obj.get("id",""),obj.get("name",""),details[:180]))
+        refresh()
+        buttons=tk.Frame(wrap,bg=BG);buttons.pack(fill="x")
+        tk.Button(buttons,text="+ Add",command=lambda:self.entry_dialog(section,key,None,refresh),bg=PURPLE,fg="white",relief="flat",padx=16,pady=8).pack(side="left")
+        def edit():
+            selected=tree.selection()
+            if not selected:return
+            idx=int(selected[0]);self.entry_dialog(section,key,idx,refresh)
+        def delete():
+            selected=tree.selection()
+            if selected and messagebox.askyesno("Delete entry","Remove selected entry?"):
+                del self.project["content"][key][int(selected[0])];refresh()
+        tk.Button(buttons,text="Edit selected",command=edit,bg=PANEL2,fg=TEXT,relief="flat",padx=14,pady=8).pack(side="left",padx=6)
+        tk.Button(buttons,text="Delete",command=delete,bg=PANEL2,fg=TEXT,relief="flat",padx=14,pady=8).pack(side="left")
+    def entry_dialog(self,section,key,index,refresh):
+        old=dict(self.project["content"][key][index]) if index is not None else {}
+        title=("Edit " if index is not None else "Add ")+section[:-1] if section.endswith("s") else section
+        win=tk.Toplevel(self);win.title(title);win.configure(bg=BG);win.geometry("460x570");win.transient(self)
+        fields=[("name","Display name",old.get("name","")),("id","Internal ID",old.get("id",""))]
+        if key=="blocks":fields += [("hardness","Hardness",old.get("hardness","1.5")),("resistance","Blast resistance",old.get("resistance","6")),("light","Light level (0-15)",old.get("light","0")),("tool","Required tool",old.get("tool","")) ,("texture","Texture path",old.get("texture",""))]
+        elif key=="items":fields += [("type","Item type",old.get("type","normal")),("max_stack","Max stack size",old.get("max_stack","64")),("durability","Durability",old.get("durability","0")),("texture","Texture path",old.get("texture",""))]
+        elif key=="recipes":fields += [("recipe_type","Recipe type (shaped/shapeless)",old.get("recipe_type","shapeless")),("output","Output item ID",old.get("output","")),("count","Output count",old.get("count","1")),("ingredients","Ingredients (comma-separated IDs)",old.get("ingredients",""))]
+        elif key=="mobs":fields += [("health","Health",old.get("health","20")),("damage","Attack damage",old.get("damage","3")),("speed","Movement speed",old.get("speed","0.25")),("behavior","Behavior preset",old.get("behavior","neutral")),("spawn","Spawn conditions",old.get("spawn",""))]
+        vars={}
+        tk.Label(win,text=section+" properties",bg=BG,fg=TEXT,font=("Segoe UI",16,"bold")).pack(anchor="w",padx=18,pady=(18,10))
+        form=tk.Frame(win,bg=BG);form.pack(fill="both",expand=True,padx=18)
+        for field,label,default in fields:
+            tk.Label(form,text=label,bg=BG,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",pady=(7,2))
+            v=tk.StringVar(value=str(default))
+            ent=tk.Entry(form,textvariable=v,bg=PANEL,fg=TEXT,insertbackground=TEXT,relief="flat")
+            ent.pack(fill="x",ipady=7);vars[field]=v
+        def save():
+            name=vars["name"].get().strip();ident=vars["id"].get().strip()
+            if not name or not re.fullmatch(r"[a-z0-9_]+",ident):
+                messagebox.showerror("Invalid entry","Name is required. ID must use lowercase letters, digits and underscore.",parent=win);return
+            data={}
+            for f,_,_ in fields:
+                val=vars[f].get().strip()
+                if f in ("hardness","resistance","light","max_stack","durability","count","health","damage","speed"):
+                    try: data[f]=float(val) if f=="speed" else int(val)
+                    except ValueError:messagebox.showerror("Invalid number",f"Enter a valid number for {f}.",parent=win);return
+                else:data[f]=val
+            if key=="recipes":data["ingredients"]=[x.strip() for x in data["ingredients"].split(",") if x.strip()]
+            if key=="blocks" and not 0<=data["light"]<=15:
+                messagebox.showerror("Light value","Light must be between 0 and 15.",parent=win);return
+            if key=="items" and not 1<=data["max_stack"]<=99:
+                messagebox.showerror("Stack size","Stack size must be from 1 to 99.",parent=win);return
+            arr=self.project["content"][key]
+            if index is None:arr.append(data)
+            else:arr[index]=data
+            win.destroy();refresh()
+        tk.Button(win,text="Save entry",command=save,bg=PURPLE,fg="white",relief="flat",padx=15,pady=9).pack(fill="x",padx=18,pady=16)
+    def placeholder(self,section):
+        self.header(section,"This section is currently a design placeholder.")
+        descriptions={
+            "GUI Screens":"Planned screen layout editor: canvas, buttons, labels, inventory slots and click actions.",
+            "Visual Logic":"Planned event → condition → action node editor. Logic is not compiled to mod source yet.",
+            "Structures":"Planned grid/palette structure designer with rotate and mirror tools.",
+            "Visuals & FX":"Planned texture/model browser, particles, sounds and animation timeline.",
+            "Settings":"Project metadata and target-loader settings."
+        }
+        self.card("Feature panel",descriptions.get(section,"Planned editor area."),lambda:None,"Coming soon")
     def new_project(self):
-        win=tk.Toplevel(self);win.title("New Minecraft Mod");win.configure(bg=BG);win.geometry("460x520");win.resizable(False,False)
-        tk.Label(win,text="Create your mod project",bg=BG,fg=TEXT,font=("Segoe UI",18,"bold")).pack(anchor="w",padx=22,pady=(22,5))
-        tk.Label(win,text="Choose a few basics. No programming required.",bg=BG,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",padx=22,pady=(0,14))
-        form=tk.Frame(win,bg=BG);form.pack(fill="x",padx=22)
-        inputs={}
-        def add_input(label,key,default=""):
-            tk.Label(form,text=label,bg=BG,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",pady=(8,3))
-            ent=tk.Entry(form,bg=PANEL,fg=TEXT,insertbackground=TEXT,relief="flat")
-            ent.pack(fill="x",ipady=8);ent.insert(0,default);inputs[key]=ent
-        add_input("Mod name","name","My Minecraft Mod")
-        add_input("Mod ID (lowercase, no spaces)","mod_id","my_mod")
-        add_input("Creator / author","author")
-        tk.Label(form,text="Minecraft version",bg=BG,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",pady=(8,3))
-        version=tk.StringVar(value="1.21.1")
-        tk.OptionMenu(form,version,"1.21.1","1.21.4","1.20.1","1.20.4").pack(anchor="w")
-        tk.Label(form,text="Mod loader",bg=BG,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",pady=(8,3))
-        loader=tk.StringVar(value="Fabric")
-        tk.OptionMenu(form,loader,"Fabric","Forge","NeoForge").pack(anchor="w")
+        win=tk.Toplevel(self);win.title("New mod project");win.geometry("490x540");win.configure(bg=BG);win.transient(self)
+        fields={}
+        for key,label,default in [("name","Mod name","My Mod"),("mod_id","Mod ID","my_mod"),("author","Author","")]:
+            tk.Label(win,text=label,bg=BG,fg=MUTED).pack(anchor="w",padx=20,pady=(12,3))
+            v=tk.StringVar(value=default);tk.Entry(win,textvariable=v,bg=PANEL,fg=TEXT,insertbackground=TEXT,relief="flat").pack(fill="x",padx=20,ipady=8);fields[key]=v
+        tk.Label(win,text="Minecraft version",bg=BG,fg=MUTED).pack(anchor="w",padx=20,pady=(12,3))
+        version=tk.StringVar(value="1.21.1");ttk.Combobox(win,textvariable=version,values=["1.21.1","1.21.4","1.20.1","1.20.4"],state="readonly").pack(fill="x",padx=20)
+        tk.Label(win,text="Mod loader",bg=BG,fg=MUTED).pack(anchor="w",padx=20,pady=(12,3))
+        loader=tk.StringVar(value="Fabric");ttk.Combobox(win,textvariable=loader,values=["Fabric","Forge","NeoForge"],state="readonly").pack(fill="x",padx=20)
+        tk.Label(win,text="Project folder",bg=BG,fg=MUTED).pack(anchor="w",padx=20,pady=(12,3))
         folder=tk.StringVar(value=str(Path.home()/"PurpleCreatorProjects"))
-        tk.Label(form,text="Project folder",bg=BG,fg=MUTED,font=("Segoe UI",9)).pack(anchor="w",pady=(8,3))
-        pathline=tk.Frame(form,bg=BG);pathline.pack(fill="x")
-        tk.Entry(pathline,textvariable=folder,bg=PANEL,fg=TEXT,insertbackground=TEXT,relief="flat").pack(side="left",fill="x",expand=True,ipady=7)
-        tk.Button(pathline,text="Browse",command=lambda:folder.set(filedialog.askdirectory() or folder.get()),bg=PANEL2,fg=TEXT,relief="flat").pack(side="left",padx=(5,0))
+        line=tk.Frame(win,bg=BG);line.pack(fill="x",padx=20)
+        tk.Entry(line,textvariable=folder,bg=PANEL,fg=TEXT,insertbackground=TEXT,relief="flat").pack(side="left",fill="x",expand=True,ipady=7)
+        tk.Button(line,text="Browse",command=lambda:folder.set(filedialog.askdirectory() or folder.get()),bg=PANEL2,fg=TEXT,relief="flat").pack(side="left",padx=4)
         def create():
-            name=inputs["name"].get().strip()
-            modid=inputs["mod_id"].get().strip()
-            if not name or not re.fullmatch(r"[a-z0-9_]+",modid):
-                messagebox.showerror("Check project details","Enter a name and a valid mod ID (lowercase letters, digits and underscores).",parent=win);return
-            self.project={"name":name,"mod_id":modid,"author":inputs["author"].get().strip(),"minecraft_version":version.get(),"loader":loader.get(),"project_folder":folder.get(),"content":{"blocks":[],"items":[],"mobs":[],"guis":[],"logic":[],"structures":[],"visuals":[]}}
-            base=Path(folder.get())/modid
+            if not fields["name"].get().strip() or not re.fullmatch("[a-z0-9_]+",fields["mod_id"].get().strip()):
+                messagebox.showerror("Project details","Mod name is required and Mod ID must be lowercase with underscores.",parent=win);return
+            p={**DEFAULT_PROJECT,"name":fields["name"].get().strip(),"mod_id":fields["mod_id"].get().strip(),"author":fields["author"].get().strip(),"minecraft_version":version.get(),"loader":loader.get(),"project_folder":folder.get(),"content":{k:[] for k in CONTENT_KEYS}}
+            dest=Path(folder.get())/p["mod_id"]
             try:
-                base.mkdir(parents=True,exist_ok=True)
-                (base/"purple_project.json").write_text(json.dumps(self.project,indent=2,ensure_ascii=False),encoding="utf-8")
-            except Exception as exc:
-                messagebox.showerror("Could not save project",str(exc),parent=win);return
-            self.project_label.configure(text=f"{name}  •  {loader.get()} {version.get()}")
-            win.destroy();self.show_section("Home")
-            messagebox.showinfo("Project created","Project settings saved. The mod build/export pipeline is not connected yet.")
-        tk.Button(win,text="Create Project",command=create,bg=PURPLE2,fg="white",relief="flat",font=("Segoe UI",10,"bold"),padx=18,pady=10).pack(fill="x",padx=22,pady=20)
-
-    def save_project(self):
-        if not self.project:return
-        target=Path(self.project["project_folder"])/self.project["mod_id"]/"purple_project.json"
+                dest.mkdir(parents=True,exist_ok=True)
+                file=dest/"purple_project.json";file.write_text(json.dumps(p,ensure_ascii=False,indent=2),encoding="utf-8")
+            except Exception as e:messagebox.showerror("Create failed",str(e),parent=win);return
+            self.project=p;self.project_file=file;self.update_label();win.destroy();self.show("Dashboard")
+            messagebox.showinfo("Project created","Project file created. Content editors can now add definitions. JAR export is not yet available.")
+        tk.Button(win,text="Create project",command=create,bg=PURPLE,fg="white",relief="flat",padx=18,pady=10).pack(fill="x",padx=20,pady=20)
+    def open_project(self):
+        path=filedialog.askopenfilename(title="Open Purple Creator project",filetypes=[("Purple project","purple_project.json"),("JSON","*.json")])
+        if not path:return
         try:
-            target.parent.mkdir(parents=True,exist_ok=True)
-            target.write_text(json.dumps(self.project,indent=2,ensure_ascii=False),encoding="utf-8")
-            messagebox.showinfo("Saved",f"Saved to:\n{target}")
-        except Exception as exc:
-            messagebox.showerror("Save failed",str(exc))
-
+            p=json.loads(Path(path).read_text(encoding="utf-8"))
+            if not isinstance(p,dict) or "mod_id" not in p or "content" not in p:raise ValueError("This file is not a Purple Creator project.")
+            for k in CONTENT_KEYS:p.setdefault("content",{}).setdefault(k,[])
+            self.project=p;self.project_file=Path(path);self.update_label();self.show("Dashboard")
+        except Exception as e:messagebox.showerror("Open failed",str(e))
+    def update_label(self):
+        if self.project:self.projlabel.config(text=f'{self.project["name"]} • {self.project["loader"]} {self.project["minecraft_version"]}')
+    def save_project(self):
+        if not self.project:return messagebox.showinfo("No project","Create or open a project first.")
+        if not self.project_file:
+            path=filedialog.asksaveasfilename(defaultextension=".json",filetypes=[("Purple project","*.json")])
+            if not path:return
+            self.project_file=Path(path)
+        try:
+            self.project_file.write_text(json.dumps(self.project,ensure_ascii=False,indent=2),encoding="utf-8")
+            messagebox.showinfo("Saved","Project saved successfully.")
+        except Exception as e:messagebox.showerror("Save failed",str(e))
 if __name__=="__main__":
-    PurpleCreatorApp().mainloop()
+    Studio().mainloop()
